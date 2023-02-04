@@ -19,33 +19,108 @@
     "url": "https://github.com/gjsjohnmurray/vscode-codespex"
   },
   "extensionDependencies": [
+    "intersystems.language-server"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onLanguage:objectscript-class",
+    "onLanguage:objectscript",
+    "onLanguage:objectscript-csp",
+    "onLanguage:objectscript-int",
+    "onLanguage:objectscript-macros"
   ],
   "contributes": {
     "commands": [
       {
-				"command": "georgejames.codespex.dismissAllOnActive",
+				"command": "codespex.dismissAllOnActive",
 				"title": "Remove All codeSpex Comments on Active Document",
         "category": "codeSpex"
 			},
       {
-        "command": "georgejames.codespex.dismissThread",
-        "title": "Dismiss",
-        "icon": "$(zap)"
+        "command": "codespex.muteThread",
+        "title": "Mute",
+        "icon": "$(mute)"
+      },
+      {
+        "command": "codespex.resolveThread",
+        "title": "Resolve",
+        "icon": "$(check)"
+      },
+      {
+        "command": "codespex.unresolveThread",
+        "title": "Unresolve",
+        "icon": "$(comment-unresolved)"
+      },
+      {
+        "command": "codespex.resolveToken",
+        "title": "Resolve All",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "codespex.resolveTokenType",
+        "title": "Resolve Token Type"
+      },
+      {
+        "command": "codespex.excludeToken",
+        "title": "Exclude All Workspace Occurrences of Token",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "codespex.excludeToken.global",
+        "title": "Apply Exclusion to All Workspaces",
+        "icon": "$(close-all)"
       }
     ],
     "menus": {
       "commandPalette": [
         {
-          "command": "georgejames.codespex.dismissThread",
+          "command": "codespex.muteThread",
+          "when": "false"
+        },
+        {
+          "command": "codespex.resolveThread",
+          "when": "false"
+        },
+        {
+          "command": "codespex.unresolveThread",
+          "when": "false"
+        },
+        {
+          "command": "codespex.resolveToken",
+          "when": "false"
+        },
+        {
+          "command": "codespex.resolveTokenType",
+          "when": "false"
+        },
+        {
+          "command": "codespex.excludeToken",
+          "when": "false"
+        },
+        {
+          "command": "codespex.excludeToken.global",
           "when": "false"
         }
       ],
       "comments/commentThread/title": [
         {
-          "command": "georgejames.codespex.dismissThread"
+          "command": "codespex.muteThread",
+          "group": "1@10"
+        },
+        {
+          "command": "codespex.excludeToken",
+          "alt": "codespex.excludeToken.global",
+          "group": "1@30"
+        },
+        {
+          "command": "codespex.resolveThread",
+          "alt": "codespex.resolveToken",
+          "group": "1@20",
+          "when": "commentThread == 'unresolved'"
+        },
+        {
+          "command": "codespex.unresolveThread",
+          "group": "1@20",
+          "when": "commentThread == 'resolved'"
         }
       ]
     }
