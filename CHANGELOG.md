@@ -1,5 +1,5 @@
 # Change Log
 
-## [0.0.1] DD-Mmm-YYYY
+## [0.1.0] 05-Feb-2023
 
-- Initial release.
+- Initial release on Marketplace.

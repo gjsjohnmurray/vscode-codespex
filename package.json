@@ -1,9 +1,9 @@
 {
   "name": "codespex",
   "displayName": "gj :: codeSpex",
-  "description": "Show coding help using VS Code's editor commenting feature",
+  "description": "Show coding help using VS Code's commenting feature",
   "publisher": "georgejames",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.75.0"
@@ -31,41 +31,42 @@
   "contributes": {
     "commands": [
       {
-				"command": "codespex.dismissAllOnActive",
+				"command": "codeSpex.dismissAllOnActive",
 				"title": "Remove All codeSpex Comments on Active Document",
         "category": "codeSpex"
 			},
       {
-        "command": "codespex.muteThread",
+        "command": "codeSpex.muteThread",
         "title": "Mute",
         "icon": "$(mute)"
       },
       {
-        "command": "codespex.resolveThread",
+        "command": "codeSpex.resolveThread",
         "title": "Resolve",
         "icon": "$(check)"
       },
       {
-        "command": "codespex.unresolveThread",
+        "command": "codeSpex.unresolveThread",
         "title": "Unresolve",
         "icon": "$(comment-unresolved)"
       },
       {
-        "command": "codespex.resolveToken",
-        "title": "Resolve All",
+        "command": "codeSpex.resolveToken",
+        "title": "Resolve All in Document",
         "icon": "$(check-all)"
       },
       {
-        "command": "codespex.resolveTokenType",
-        "title": "Resolve Token Type"
+        "command": "codeSpex.resolveTokenEverywhere",
+        "title": "Resolve in All Open Documents",
+        "icon": "$(check-all)"
       },
       {
-        "command": "codespex.excludeToken",
+        "command": "codeSpex.excludeToken",
         "title": "Exclude All Workspace Occurrences of Token",
         "icon": "$(clear-all)"
       },
       {
-        "command": "codespex.excludeToken.global",
+        "command": "codeSpex.excludeToken.global",
         "title": "Apply Exclusion to All Workspaces",
         "icon": "$(close-all)"
       }
@@ -73,54 +74,54 @@
     "menus": {
       "commandPalette": [
         {
-          "command": "codespex.muteThread",
+          "command": "codeSpex.muteThread",
           "when": "false"
         },
         {
-          "command": "codespex.resolveThread",
+          "command": "codeSpex.resolveThread",
           "when": "false"
         },
         {
-          "command": "codespex.unresolveThread",
+          "command": "codeSpex.unresolveThread",
           "when": "false"
         },
         {
-          "command": "codespex.resolveToken",
+          "command": "codeSpex.resolveToken",
           "when": "false"
         },
         {
-          "command": "codespex.resolveTokenType",
+          "command": "codeSpex.resolveTokenEverywhere",
           "when": "false"
         },
         {
-          "command": "codespex.excludeToken",
+          "command": "codeSpex.excludeToken",
           "when": "false"
         },
         {
-          "command": "codespex.excludeToken.global",
+          "command": "codeSpex.excludeToken.global",
           "when": "false"
         }
       ],
       "comments/commentThread/title": [
         {
-          "command": "codespex.muteThread",
+          "command": "codeSpex.muteThread",
           "group": "1@10"
         },
         {
-          "command": "codespex.excludeToken",
-          "alt": "codespex.excludeToken.global",
+          "command": "codeSpex.excludeToken",
+          "alt": "codeSpex.excludeToken.global",
           "group": "1@30"
         },
         {
-          "command": "codespex.resolveThread",
-          "alt": "codespex.resolveToken",
+          "command": "codeSpex.resolveThread",
+          "alt": "codeSpex.resolveTokenEverywhere",
           "group": "1@20",
-          "when": "commentThread == 'unresolved'"
+          "when": "commentThread =~ /^unresolved:/"
         },
         {
-          "command": "codespex.unresolveThread",
+          "command": "codeSpex.unresolveThread",
           "group": "1@20",
-          "when": "commentThread == 'resolved'"
+          "when": "commentThread =~ /^resolved:/"
         }
       ]
     },
