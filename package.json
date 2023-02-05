@@ -123,6 +123,96 @@
           "when": "commentThread == 'resolved'"
         }
       ]
+    },
+    "configuration": {
+      "title": "gj :: codeSpex",
+      "properties": {
+        "codeSpex.languages": {
+          "type": "object",
+          "scope": "resource",
+          "description": "Language IDs to process.",
+          "patternProperties": {
+            ".+": {
+              "type": "object",
+              "description": "Settings for a language.",
+              "properties": {
+                "tokens": {
+                  "type": "object",
+                  "description": "Semantic token types to comment on.",
+                  "patternProperties": {
+                    ".+": {
+                      "type": "object",
+                      "description": "Settings for a semantic token type of a language.",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean",
+                          "description": "Comment on this token type.",
+                          "default": true
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false,
+
+          "default": {
+            "objectscript-class": {
+              "tokens": {
+                "CLS_ClassName": {
+                  "enabled": true
+                },
+                "CLS_ClassMember": {
+                  "enabled": true
+                }
+              }
+            },
+            "objectscript": {
+              "tokens": {
+                "COS_Objectname": {
+                  "enabled": true
+                },
+                "COS_Objectmember": {
+                  "enabled": true
+                },
+                "COS_Objectmethod": {
+                  "enabled": true
+                }
+              }
+            },
+            "objectscript-int": {
+              "tokens": {
+                "COS_Objectname": {
+                  "enabled": true
+                },
+                "COS_Objectmember": {
+                  "enabled": true
+                },
+                "COS_Objectmethod": {
+                  "enabled": true
+                }
+              }
+            },
+            "objectscript-csp": {
+              "tokens": {
+                "COS_Objectname": {
+                  "enabled": true
+                },
+                "COS_Objectmember": {
+                  "enabled": true
+                },
+                "COS_Objectmethod": {
+                  "enabled": true
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "main": "./dist/extension.js",

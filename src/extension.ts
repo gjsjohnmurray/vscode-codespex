@@ -71,11 +71,26 @@ export async function activate(context: ExtensionContext): Promise<void> {
 	}
 	
 	async function addDocumentThreads(doc: TextDocument) {
-		const LANGUAGES = ['objectscript', 'objectscript-class', 'objectscript-csp', 'objectscript-int', 'objectscript-macros'];
-		const TARGETS = ['CLS_ClassName', 'CLS_ClassMember', 'COS_Objectname', 'COS_Objectmember', 'COS_Objectmethod'];
+		const LANGUAGES: string[] = [];
+		const confLanguages = workspace.getConfiguration('codeSpex', doc).get('languages');
+		if (typeof confLanguages === "object" && confLanguages) {
+			for (const languageId in confLanguages) {
+				LANGUAGES.push(languageId);
+			}
+		}
 		const uri = doc.uri;
 		const mapKey = uri.toString();
 		if (LANGUAGES.includes(doc.languageId) && !commentThreadsMap.has(mapKey)) {
+			const TARGETS: string[] = [];
+			const confTokenNames: {[k: string]: any} = workspace.getConfiguration(`codeSpex.languages.${doc.languageId}`, doc).get('tokens') || [];
+			if (typeof confTokenNames === "object" && confTokenNames) {
+				for (const tokenName in confTokenNames) {
+					if (confTokenNames[tokenName].enabled) {
+						TARGETS.push(tokenName);
+					}
+				}
+			}
+	
 			const commentThreads: CommentThread[] = [];
 
 			// TODO - discover why the active editor loaded by hot-backup resume doesn't get any STs (nor therefore an ST legend).
