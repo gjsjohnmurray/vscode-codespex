@@ -77,7 +77,7 @@ export async function activate(context: ExtensionContext): Promise<void> {
 			console.log(`TODO codeSpex.excludeToken.global: ${thread.label}`);
 		}),
 		window.onDidChangeVisibleTextEditors(async (editors) => {
-			console.log(`onDidChangeVisibleTextEditors: ${editors.length}`);
+			//console.log(`onDidChangeVisibleTextEditors: ${editors.length}`);
 			await addVisibleEditorThreads(editors);
 		})
 	);
@@ -210,47 +210,54 @@ export async function activate(context: ExtensionContext): Promise<void> {
 			}
 		});
 
-		// Add comment threads
-		targetRangesMap.forEach((ranges, tokenName) => {
-			ranges.forEach(async (range) => {
+		// Local async function to add a comment thread for a range
+		const addThreadForRange = async (tokenName: string, range: Range) => {
 
-				// Ask for the hover that would appear if the pointer was on the end ogf the range
-				// Using end seemed more reliable that using start(at least for InterSystems LS)
-				const hovers: Hover[] = await commands.executeCommand('vscode.executeHoverProvider', uri, range.end);
-				if (hovers.length > 0) {
-					let body: MarkdownString;
+			// Ask for the hover that would appear if the pointer was on the end of the range
+			// Using end seemed more reliable that using start(at least for InterSystems LS)
+			const hovers: Hover[] = await commands.executeCommand('vscode.executeHoverProvider', uri, range.end);
+			if (hovers.length > 0) {
+				let body: MarkdownString;
 
-					const contents = hovers[0].contents;
-					body = new MarkdownString(
-						contents.map((content): string => {
-							return (content as MarkdownString).value;
-						}).join('\n\n'));
+				const contents = hovers[0].contents;
+				body = new MarkdownString(
+					contents.map((content): string => {
+						return (content as MarkdownString).value;
+					}).join('\n\n'));
 
-					const comment: Comment = {
-						body,
-						author: { name: 'gj :: codeSpex', iconPath },
-						mode: CommentMode.Preview,
-						reactions: [
-							REACTION_MUTE
-						]
-					};
-					const commentThread = commentController.createCommentThread(uri, range, [comment]);
-					const tokenValue = doc.getText(range).split('\n')[0];
-					commentThread.label = `${tokenValue} (${tokenName})`;
-					commentThread.label += ` [Ln ${range.start.line + 1}, Col ${range.start.character + 1} to Ln ${range.end.line + 1}, Col ${range.end.character + 1}]`;
-					commentThread.canReply = false;
-					commentThread.state = CommentThreadState.Unresolved;
-					commentThread.collapsibleState = CommentThreadCollapsibleState.Collapsed;
+				const comment: Comment = {
+					body,
+					author: { name: 'gj :: codeSpex', iconPath },
+					mode: CommentMode.Preview,
+					reactions: [
+						REACTION_MUTE
+					]
+				};
+				const commentThread = commentController.createCommentThread(uri, range, [comment]);
+				const tokenValue = doc.getText(range).split('\n')[0];
+				commentThread.label = `${tokenValue} (${tokenName})`;
+				commentThread.label += ` [Ln ${range.start.line + 1}, Col ${range.start.character + 1} to Ln ${range.end.line + 1}, Col ${range.end.character + 1}]`;
+				commentThread.canReply = false;
+				commentThread.state = CommentThreadState.Unresolved;
+				commentThread.collapsibleState = CommentThreadCollapsibleState.Collapsed;
 
-					// Handle occurrences of default %-package, e.g. %Integer meaning %Library.Integer
-					// TODO move this COS_Class*-token-specific transform into configuration 
-					const canonicalValue = tokenValue.replace(/^%(?!.*\.)/, '%Library.');
-					
-					commentThread.contextValue = `unresolved:${tokenName}:${canonicalValue}`;
-					commentThreads.push(commentThread);
-				}
-			});
-		});
+				// Handle occurrences of default %-package, e.g. %Integer meaning %Library.Integer
+				// TODO move this COS_Class*-token-specific transform into configuration 
+				const canonicalValue = tokenValue.replace(/^%(?!.*\.)/, '%Library.');
+				
+				commentThread.contextValue = `unresolved:${tokenName}:${canonicalValue}`;
+				commentThreads.push(commentThread);
+			}
+		};
+
+		// Add comment threads, preserving the sequence in which token types were found, and within each token type the sequence in which the tokens occurred
+		for (const mapPair of targetRangesMap) {
+			const tokenName = mapPair[0];
+			const ranges = mapPair[1];
+			for (const range of ranges) {
+				await addThreadForRange(tokenName, range);
+			}
+		};
 	}
 }
 
