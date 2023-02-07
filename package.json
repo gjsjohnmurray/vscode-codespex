@@ -3,7 +3,7 @@
   "displayName": "gj :: codeSpex",
   "description": "Show coding help using VS Code's commenting feature",
   "publisher": "georgejames",
-  "version": "0.1.1-SNAPSHOT",
+  "version": "0.1.1",
   "license": "MIT",
   "engines": {
     "vscode": "^1.75.0"
