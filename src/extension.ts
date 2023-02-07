@@ -6,7 +6,8 @@ export async function activate(context: ExtensionContext): Promise<void> {
   
 	const { displayName, icon }= context.extension.packageJSON;
 
-	// To use an icon from a local file we have to use a special uri
+	// To use an icon from a local file as the author avatar we have to use a special uri
+	// TODO - get this to work on remote (container) workspaces and GitHub Codespaces
 	const iconPath = Uri.from({ scheme: 'vscode-file', authority: 'vscode-app', path: '/' + context.asAbsolutePath(icon)});
 
 	const myIdentity = `${displayName} (${context.extension.id})`;
@@ -79,6 +80,14 @@ export async function activate(context: ExtensionContext): Promise<void> {
 		window.onDidChangeVisibleTextEditors(async (editors) => {
 			//console.log(`onDidChangeVisibleTextEditors: ${editors.length}`);
 			await addVisibleEditorThreads(editors);
+		}),
+		workspace.onDidCloseTextDocument((doc: TextDocument) => {
+			// Remove comments upon close
+			const mapKey = doc.uri.toString();
+			(mapCommentThreads.get(mapKey) ?? []).forEach((thread: CommentThread) => {
+				thread.dispose();
+			});
+			mapCommentThreads.delete(mapKey);
 		})
 	);
 
