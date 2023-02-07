@@ -20,9 +20,11 @@ export async function activate(context: ExtensionContext): Promise<void> {
 		return;
 	};
 
-	// To get all our CommentThreads for a document. Key is uri.toString()
+	// Map to hold all our CommentThreads per document. Key is uri.toString()
 	const mapCommentThreads = new Map<string, CommentThread[]>();
-	await addVisibleEditorThreads(window.visibleTextEditors);
+
+	// Add comments to docs already open at startup. Deferred so language server will be ready to provide tokens.
+	setTimeout(() => {addVisibleEditorThreads(window.visibleTextEditors);},	1000);
 
 	context.subscriptions.push(
 		commands.registerCommand('codeSpex.dismissAllOnActive', () => {
@@ -147,7 +149,6 @@ export async function activate(context: ExtensionContext): Promise<void> {
 		mapCommentThreads.set(mapKey, commentThreads);
 
 		// Get tokens legend, and bale out if nothing to handle, after removing empty array
-		// TODO - discover why the active editor loaded by hot-backup resume doesn't get any STs (nor therefore an ST legend).
 		const legend: SemanticTokensLegend = await commands.executeCommand('vscode.provideDocumentSemanticTokensLegend', uri);
 		if (!legend?.tokenTypes.length) {
 			mapCommentThreads.delete(mapKey);
