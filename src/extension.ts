@@ -127,12 +127,15 @@ export async function activate(context: ExtensionContext): Promise<void> {
 		}
 		
 		// For the doc's language, which token types are wanted?
+		// TODO - cache this per languageId
 		const confTokenNames: {[k: string]: any} = workspace.getConfiguration(`codeSpex.languages.${doc.languageId}`, doc).get('tokens') || [];
 		const TARGETS: string[] = [];
 		if (typeof confTokenNames === "object" && confTokenNames) {
 			for (const tokenName in confTokenNames) {
 				if (confTokenNames[tokenName].enabled) {
 					TARGETS.push(tokenName);
+					
+					// TODO add a configuration structure for selecting which modifiers we want, then load it here and check it below
 				}
 			}
 		}
@@ -141,8 +144,6 @@ export async function activate(context: ExtensionContext): Promise<void> {
 		if (TARGETS.length === 0) {
 			return;
 		}
-
-		const LANGUAGES: string[] = [doc.languageId];
 		
 		// Add the empty array to the map before calling async command, in order to prevent re-entry
 		const commentThreads: CommentThread[] = [];
@@ -155,19 +156,22 @@ export async function activate(context: ExtensionContext): Promise<void> {
 			return;
 		}
 
-		const mapNameToId = new Map<string, number>();
 		const mapIdToName = new Map<number, string>();
 		legend.tokenTypes.forEach((value, index) => {
 			if (TARGETS.includes(value)) {
-				mapNameToId.set(value, index);
 				mapIdToName.set(index, value);
 			}
 		});
 
 		// Bale out if not interested in any of the tokens in the legend
-		if (mapNameToId.size === 0) {
+		if (mapIdToName.size === 0) {
 			return;
 		}
+
+		const modifier: string[] = [];
+		legend.tokenModifiers.forEach((value, index) => {
+			modifier[index] = value;
+		});
 
 		// Get the STs
 		const tokens: SemanticTokens = await commands.executeCommand('vscode.provideDocumentSemanticTokens', uri);
@@ -186,8 +190,14 @@ export async function activate(context: ExtensionContext): Promise<void> {
 			}
 			character += tokens.data[index + 1];
 			const length = tokens.data[index + 2];
-			const tokenName = mapIdToName.get(tokens.data[index + 3]);
+			const tokenId = tokens.data[index + 3];
+			const tokenName = mapIdToName.get(tokenId);
 			if (tokenName) {
+				const modifierBits = tokens.data[index + 4];
+
+				// TODO check modifiers match what we are interested in (see above)
+
+				// Add it to the Range[] being accumulated for this token
 				const ranges = targetRangesMap.get(tokenName) ?? [];
 				const insertBefore = ranges.findIndex((range) => {
 					if (range.start.line > line) {
@@ -252,8 +262,10 @@ export async function activate(context: ExtensionContext): Promise<void> {
 				commentThread.collapsibleState = CommentThreadCollapsibleState.Collapsed;
 
 				// Handle occurrences of default %-package, e.g. %Integer meaning %Library.Integer
-				// TODO move this COS_Class*-token-specific transform into configuration 
-				const canonicalValue = tokenValue.replace(/^%(?!.*\.)/, '%Library.');
+				// TODO move this InterSystems-LS-token-specific transform into configuration 
+				const canonicalValue = tokenName.startsWith('CLS_Class') || (tokenName === 'COS_Objectname')
+					? tokenValue.replace(/^%(?!.*\.)/, '%Library.')
+					: tokenValue;
 				
 				commentThread.contextValue = `unresolved:${tokenName}:${canonicalValue}`;
 				commentThreads.push(commentThread);
