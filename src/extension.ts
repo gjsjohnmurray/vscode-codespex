@@ -1,4 +1,4 @@
-import{ CancellationToken, commands, Comment, CommentMode, CommentReaction, comments, CommentThread, CommentThreadCollapsibleState, CommentThreadState, ExtensionContext, extensions, Hover, MarkdownString, MarkedString, Range, SemanticTokens, SemanticTokensLegend, TextDocument, TextEditor, Uri, window, workspace } from 'vscode';
+import{ commands, Comment, CommentMode, CommentReaction, comments, CommentThread, CommentThreadCollapsibleState, CommentThreadState, ExtensionContext, extensions, Hover, MarkdownString, MarkedString, Range, SemanticTokens, SemanticTokensLegend, TextDocument, TextDocumentChangeReason, TextDocumentContentChangeEvent, TextEditor, Uri, window, workspace } from 'vscode';
 
 export async function activate(context: ExtensionContext): Promise<void> {
 
@@ -23,8 +23,11 @@ export async function activate(context: ExtensionContext): Promise<void> {
 	// Map to hold all our CommentThreads per document. Key is uri.toString()
 	const mapCommentThreads = new Map<string, CommentThread[]>();
 
+	// Map to hold reload timers. Key is uri.toString()
+	const mapThreadReloaders = new Map<string, NodeJS.Timeout>();
+
 	// Add comments to docs already open at startup. Deferred so language server will be ready to provide tokens.
-	setTimeout(() => {addVisibleEditorThreads(window.visibleTextEditors);},	1000);
+	setTimeout(() => {addVisibleEditorThreads(window.visibleTextEditors);},	1_000);
 
 	context.subscriptions.push(
 		commands.registerCommand('codeSpex.dismissAllOnActive', () => {
@@ -83,9 +86,44 @@ export async function activate(context: ExtensionContext): Promise<void> {
 			//console.log(`onDidChangeVisibleTextEditors: ${editors.length}`);
 			await addVisibleEditorThreads(editors);
 		}),
+		workspace.onDidChangeTextDocument((event) => {
+			// TODO Only set reload timer for document whose languageId we are interested in.
+			// TODO Can we use event.contentChanges to be smarter about updating our comment threads?
+			if (event.contentChanges.length === 0) {
+				return;
+			}
+
+			const mapKey = event.document.uri.toString();
+
+			// Abort any outstanding timer
+			const oldTimeout = mapThreadReloaders.get(mapKey);
+			if (oldTimeout) {
+				clearTimeout(oldTimeout);
+			}
+
+			// Start a new one
+			mapThreadReloaders.set(mapKey, setTimeout(() => {
+				// Remove self from map
+				mapThreadReloaders.delete(mapKey);
+
+				// Clear comments
+				(mapCommentThreads.get(mapKey) ?? []).forEach((thread: CommentThread) => {
+					thread.dispose();
+				});
+				mapCommentThreads.delete(mapKey);
+
+				// Add them again
+				addDocumentThreads(event.document);
+			}, 3_000));
+		}),
 		workspace.onDidCloseTextDocument((doc: TextDocument) => {
-			// Remove comments upon close
+			// Upon close, remove reload timer and comments
 			const mapKey = doc.uri.toString();
+			const timeout = mapThreadReloaders.get(mapKey);
+			if (timeout) {
+				clearTimeout(timeout);
+			}
+			mapThreadReloaders.delete(mapKey);
 			(mapCommentThreads.get(mapKey) ?? []).forEach((thread: CommentThread) => {
 				thread.dispose();
 			});
@@ -255,8 +293,11 @@ export async function activate(context: ExtensionContext): Promise<void> {
 				};
 				const commentThread = commentController.createCommentThread(uri, range, [comment]);
 				const tokenValue = doc.getText(range).split('\n')[0];
-				commentThread.label = `${tokenValue} (${tokenName})`;
-				commentThread.label += ` [Ln ${range.start.line + 1}, Col ${range.start.character + 1} to Ln ${range.end.line + 1}, Col ${range.end.character + 1}]`;
+				commentThread.label = `${tokenValue}`;
+				commentThread.label += range.start.line === range.end.line
+				? ` [Col ${range.start.character + 1}-${range.end.character + 1}]`
+				: ` [Ln ${range.start.line + 1}, Col ${range.start.character + 1} to Ln ${range.end.line + 1}, Col ${range.end.character + 1}]`;
+				commentThread.label += ` (${tokenName})`;
 				commentThread.canReply = false;
 				commentThread.state = CommentThreadState.Unresolved;
 				commentThread.collapsibleState = CommentThreadCollapsibleState.Collapsed;
