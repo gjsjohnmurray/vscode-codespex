@@ -16,7 +16,7 @@ export async function activate(context: ExtensionContext): Promise<void> {
 	// A `CommentController` contributes to VS Code's commenting UI
 	const commentController = comments.createCommentController('codeSpex', 'codeSpex');
  	commentController.reactionHandler = async (comment: Comment, reaction: CommentReaction) => {
-		console.log(`TODO codeSpex reaction handler got reaction '${reaction.label}' on comment '${(comment.body as MarkdownString).value.toString().split('\n', 1)[0]}'`);
+		console.log(`TODO codeSpex reaction handler got reaction '${reaction.label}' on <${comment.contextValue}> comment '${(comment.body as MarkdownString).value.toString().split('\n', 1)[0]}'`);
 		return;
 	};
 
@@ -77,10 +77,10 @@ export async function activate(context: ExtensionContext): Promise<void> {
 			});
 		}),
 		commands.registerCommand('codeSpex.excludeToken', (thread: CommentThread) => {
-			console.log(`TODO codeSpex.excludeToken: ${thread.label} in ${thread.uri.toString(true)}`);
+			console.log(`TODO codeSpex.excludeToken: ${thread.label} <${thread.contextValue}> in ${thread.uri.toString(true)}`);
 		}),
 		commands.registerCommand('codeSpex.excludeToken.global', (thread: CommentThread) => {
-			console.log(`TODO codeSpex.excludeToken.global: ${thread.label}`);
+			console.log(`TODO codeSpex.excludeToken.global: ${thread.label} <${thread.contextValue}>`);
 		}),
 		window.onDidChangeVisibleTextEditors(async (editors) => {
 			//console.log(`onDidChangeVisibleTextEditors: ${editors.length}`);
@@ -195,9 +195,11 @@ export async function activate(context: ExtensionContext): Promise<void> {
 		}
 
 		const mapIdToName = new Map<number, string>();
+		const mapNameToId = new Map<string, number>();
 		legend.tokenTypes.forEach((value, index) => {
 			if (TARGETS.includes(value)) {
 				mapIdToName.set(index, value);
+				mapNameToId.set(value, index);
 			}
 		});
 
@@ -268,49 +270,65 @@ export async function activate(context: ExtensionContext): Promise<void> {
 			}
 		});
 
+		// Cache: per-tokenId array of maps of comment body per canonicalValue of  an instance of a token type
+		const bodyMap: Map<string, MarkdownString>[] = [];
+
 		// Local async function to add a comment thread for a range
 		const addThreadForRange = async (tokenName: string, range: Range) => {
+			const tokenId = mapNameToId.get(tokenName);
+			if (typeof tokenId === 'undefined') {
+				return;
+			}
+			const tokenValue = doc.getText(range).split('\n')[0];
 
-			// Ask for the hover that would appear if the pointer was on the end of the range
-			// Using end seemed more reliable that using start(at least for InterSystems LS)
-			const hovers: Hover[] = await commands.executeCommand('vscode.executeHoverProvider', uri, range.end);
-			if (hovers.length > 0) {
-				let body: MarkdownString;
+			// Handle occurrences of default %-package, e.g. %Integer meaning %Library.Integer
+			// TODO move this InterSystems-LS-token-specific transform into configuration 
+			const canonicalValue = tokenName.startsWith('CLS_Class') || (tokenName === 'COS_Objectname')
+				? tokenValue.replace(/^%(?!.*\.)/, '%Library.')
+				: tokenValue;
+			
+			let body = bodyMap[tokenId]?.get(canonicalValue);
 
-				const contents = hovers[0].contents;
+			// Not in cache?
+			if (!body) {
+				// Ask for the hover that would appear if the pointer was on the end of the range
+				// Using end seemed more reliable that using start(at least for InterSystems LS)
+				const hovers: Hover[] = await commands.executeCommand('vscode.executeHoverProvider', uri, range.end);
+				console.log('executeHoverProvider');
+				if (hovers.length === 0) {
+					return;
+				}
 				body = new MarkdownString(
-					contents.map((content): string => {
+					hovers[0].contents.map((content): string => {
 						return (content as MarkdownString).value;
 					}).join('\n\n'));
 
-				const comment: Comment = {
-					body,
-					author: { name: 'gj :: codeSpex', iconPath },
-					mode: CommentMode.Preview,
-					reactions: [
-						REACTION_MUTE
-					]
-				};
-				const commentThread = commentController.createCommentThread(uri, range, [comment]);
-				const tokenValue = doc.getText(range).split('\n')[0];
-				commentThread.label = `${tokenValue}`;
-				commentThread.label += range.start.line === range.end.line
-				? ` [Col ${range.start.character + 1}-${range.end.character + 1}]`
-				: ` [Ln ${range.start.line + 1}, Col ${range.start.character + 1} to Ln ${range.end.line + 1}, Col ${range.end.character + 1}]`;
-				commentThread.label += ` (${tokenName})`;
-				commentThread.canReply = false;
-				commentThread.state = CommentThreadState.Unresolved;
-				commentThread.collapsibleState = CommentThreadCollapsibleState.Collapsed;
-
-				// Handle occurrences of default %-package, e.g. %Integer meaning %Library.Integer
-				// TODO move this InterSystems-LS-token-specific transform into configuration 
-				const canonicalValue = tokenName.startsWith('CLS_Class') || (tokenName === 'COS_Objectname')
-					? tokenValue.replace(/^%(?!.*\.)/, '%Library.')
-					: tokenValue;
-				
-				commentThread.contextValue = `unresolved:${tokenName}:${canonicalValue}`;
-				commentThreads.push(commentThread);
+				// Add to cache
+				if (!bodyMap[tokenId]) {
+					bodyMap[tokenId] = new Map<string, MarkdownString>();
+				}
+				bodyMap[tokenId].set(canonicalValue, body);
 			}
+			const comment: Comment = {
+				contextValue: `${tokenName}:${canonicalValue}`,
+				body,
+				author: { name: 'gj :: codeSpex', iconPath },
+				mode: CommentMode.Preview,
+				reactions: [
+					REACTION_MUTE
+				]
+			};
+			const commentThread = commentController.createCommentThread(uri, range, [comment]);
+			commentThread.label = `${tokenValue}`;
+			commentThread.label += range.start.line === range.end.line
+			? ` [Col ${range.start.character + 1}-${range.end.character + 1}]`
+			: ` [Ln ${range.start.line + 1}, Col ${range.start.character + 1} to Ln ${range.end.line + 1}, Col ${range.end.character + 1}]`;
+			commentThread.label += ` (${tokenName})`;
+			commentThread.canReply = false;
+			commentThread.state = CommentThreadState.Unresolved;
+			commentThread.collapsibleState = CommentThreadCollapsibleState.Collapsed;
+			commentThread.contextValue = `unresolved:${tokenName}:${canonicalValue}`;
+			commentThreads.push(commentThread);
 		};
 
 		// Add comment threads, preserving the sequence in which token types were found, and within each token type the sequence in which the tokens occurred
