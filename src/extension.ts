@@ -11,14 +11,17 @@ export async function activate(context: ExtensionContext): Promise<void> {
 	const iconPath = Uri.from({ scheme: 'vscode-file', authority: 'vscode-app', path: '/' + context.asAbsolutePath(icon)});
 
 	const myIdentity = `${displayName} (${context.extension.id})`;
-	const REACTION_MUTE = { label: 'Mute', iconPath, count: 0, authorHasReacted: false };
+	
+	//const REACTION_MUTE = { label: 'Mute', iconPath: Uri.file(context.asAbsolutePath(icon)), count: 0, authorHasReacted: false };
 
 	// A `CommentController` contributes to VS Code's commenting UI
 	const commentController = comments.createCommentController('codeSpex', 'codeSpex');
- 	commentController.reactionHandler = async (comment: Comment, reaction: CommentReaction) => {
+
+/*  	commentController.reactionHandler = async (comment: Comment, reaction: CommentReaction) => {
 		console.log(`TODO codeSpex reaction handler got reaction '${reaction.label}' on <${comment.contextValue}> comment '${(comment.body as MarkdownString).value.toString().split('\n', 1)[0]}'`);
 		return;
 	};
+ */
 
 	// Map to hold all our CommentThreads per document. Key is uri.toString()
 	const mapCommentThreads = new Map<string, CommentThread[]>();
@@ -314,10 +317,10 @@ export async function activate(context: ExtensionContext): Promise<void> {
 				body,
 				author: { name: 'gj :: codeSpex', iconPath },
 				mode: CommentMode.Preview,
-				reactions: [
+/* 				reactions: [
 					REACTION_MUTE
 				]
-			};
+ */			};
 			const commentThread = commentController.createCommentThread(uri, range, [comment]);
 			commentThread.label = `${tokenValue}`;
 			commentThread.label += range.start.line === range.end.line
