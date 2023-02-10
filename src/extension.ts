@@ -384,13 +384,31 @@ export async function activate(context: ExtensionContext): Promise<void> {
 			if (!tokenName || !canonicalValue || !doc) {
 				return;
 			}
+
+			const parts = canonicalValue.split('.');
+			const choices: string[] = [];
+			let suffix ='';
+			for (let index = parts.length; index > 0; index--) {
+				choices.push(parts.slice(0, index).join('.') + suffix);
+				if (suffix === '') {
+					suffix = '.*';
+				}
+			}
+			if (canonicalValue.startsWith('%')) {
+				choices.push('%*');
+			}
+			const exclusion = await window.showQuickPick(choices, { title: `Set ${global ? 'a Global' : 'an'} Exclusion on '${tokenName}' Token` });
+			if (!exclusion) {
+				return;
+			}
+
 			const languageId = doc.languageId;
 			const config = workspace.getConfiguration('codeSpex', global ? undefined : doc.uri);
 			const section: any = config.get('languages');
 			const inspected = config.inspect<string[]>(`languages.${languageId}.tokens.${tokenName}.exclusions`);
 			const exclusions = (global ? inspected?.globalValue : inspected?.workspaceFolderValue) || [];
-			if (!exclusions.includes(canonicalValue)) {
-				exclusions.push(canonicalValue);
+			if (!exclusions.includes(exclusion)) {
+				exclusions.push(exclusion);
 				try {			
 					section[languageId].tokens[tokenName].exclusions = exclusions;
 					await config.update('languages', section, global ? true : undefined);
