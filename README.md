@@ -4,9 +4,14 @@ This extension shows coding help using VS Code's commenting feature.
 
 ## Use
 
-1. Open an InterSystems class file (`objectscript-class` language mode). Code coloring and other language features will be handled by the [InterSystems Language Server](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server) extension, a dependency of this extension.
+1. Open an InterSystems class file, routine or CSP file. Code coloring and other language features will be handled by the [InterSystems Language Server](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server) extension, a dependency of this extension.
 
 2. When comment buttons appear in the gutter, click on them. Alternatively, look for entries in a 'Comments' tab in the VS Code Panel.
+
+3. When expanded each comment offers action buttons:
+- 'Mute' to remove it for the current session. It will reappear when the document is reloaded.
+- 'Resolve' to change its status. The Comments view shows a different icon on resolved entries, and its filter control allows resolved items to be hidden.
+- 'Exclude' to update workspace or global settings with entries or patterns that should not be commented about in future.
 
 ## Release Notes
 
