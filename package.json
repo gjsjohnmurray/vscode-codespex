@@ -35,12 +35,12 @@
       },
       {
         "command": "codeSpex.resolveThread",
-        "title": "Resolve",
+        "title": "Mark Resolved",
         "icon": "$(check)"
       },
       {
         "command": "codeSpex.unresolveThread",
-        "title": "Unresolve",
+        "title": "Mark Unresolved",
         "icon": "$(comment-unresolved)"
       },
       {
@@ -142,6 +142,10 @@
                           "type": "boolean",
                           "description": "Comment on this token type.",
                           "default": true
+                        },
+                        "exclusions": {
+                          "type": "array",
+                          "description": "Values to exclude"
                         }
                       },
                       "additionalProperties": false

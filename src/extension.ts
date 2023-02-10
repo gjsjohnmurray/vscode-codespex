@@ -79,11 +79,13 @@ export async function activate(context: ExtensionContext): Promise<void> {
 				});
 			});
 		}),
-		commands.registerCommand('codeSpex.excludeToken', (thread: CommentThread) => {
-			console.log(`TODO codeSpex.excludeToken: ${thread.label} <${thread.contextValue}> in ${thread.uri.toString(true)}`);
+		commands.registerCommand('codeSpex.excludeToken', async (thread: CommentThread) => {
+			//console.log(`TODO codeSpex.excludeToken: ${thread.label} <${thread.contextValue}> in ${thread.uri.toString(true)}`);
+			await addExclusion(thread, false);
 		}),
-		commands.registerCommand('codeSpex.excludeToken.global', (thread: CommentThread) => {
-			console.log(`TODO codeSpex.excludeToken.global: ${thread.label} <${thread.contextValue}>`);
+		commands.registerCommand('codeSpex.excludeToken.global', async (thread: CommentThread) => {
+			//console.log(`TODO codeSpex.excludeToken.global: ${thread.label} <${thread.contextValue}>`);
+			await addExclusion(thread, true);
 		}),
 		window.onDidChangeVisibleTextEditors(async (editors) => {
 			//console.log(`onDidChangeVisibleTextEditors: ${editors.length}`);
@@ -109,14 +111,8 @@ export async function activate(context: ExtensionContext): Promise<void> {
 				// Remove self from map
 				mapThreadReloaders.delete(mapKey);
 
-				// Clear comments
-				(mapCommentThreads.get(mapKey) ?? []).forEach((thread: CommentThread) => {
-					thread.dispose();
-				});
-				mapCommentThreads.delete(mapKey);
-
-				// Add them again
-				addDocumentThreads(event.document);
+				// Remove and add them again
+				addDocumentThreads(event.document, true);
 			}, 3_000));
 		}),
 		workspace.onDidCloseTextDocument((doc: TextDocument) => {
@@ -158,13 +154,22 @@ export async function activate(context: ExtensionContext): Promise<void> {
 		}));
 	}
 	
-	async function addDocumentThreads(doc: TextDocument) {
+	async function addDocumentThreads(doc: TextDocument, reset?: boolean) {
 		const uri = doc.uri;
 		const mapKey = uri.toString();
 
-		// Bale out if already done, even if all comment threads subsequently deleted
-		if (mapCommentThreads.has(mapKey)) {
-			return;
+		if (reset) {
+			// Clear existing comments
+			(mapCommentThreads.get(mapKey) ?? []).forEach((thread: CommentThread) => {
+				thread.dispose();
+			});
+			mapCommentThreads.delete(mapKey);
+		}
+		else {
+			// Bale out if already done, even if all comment threads subsequently deleted
+			if (mapCommentThreads.has(mapKey)) {
+				return;
+			}
 		}
 		
 		// For the doc's language, which token types are wanted?
@@ -199,10 +204,18 @@ export async function activate(context: ExtensionContext): Promise<void> {
 
 		const mapIdToName = new Map<number, string>();
 		const mapNameToId = new Map<string, number>();
+		const mapNameToExclusions = new Map<string, string[]>();
 		legend.tokenTypes.forEach((value, index) => {
 			if (TARGETS.includes(value)) {
 				mapIdToName.set(index, value);
 				mapNameToId.set(value, index);
+
+				// Aggregate the exclusions from the two levels we make it easy to set them at.
+				const inspectedExclusions = workspace.getConfiguration(`codeSpex.languages.${doc.languageId}.tokens.${value}`, uri).inspect<string[]>('exclusions');
+				const allExclusions = [...inspectedExclusions?.globalValue || [], ...inspectedExclusions?.workspaceFolderValue || []];
+
+				// TODO remove duplicates?
+				mapNameToExclusions.set(value, allExclusions);
 			}
 		});
 
@@ -289,6 +302,25 @@ export async function activate(context: ExtensionContext): Promise<void> {
 			const canonicalValue = tokenName.startsWith('CLS_Class') || (tokenName === 'COS_Objectname')
 				? tokenValue.replace(/^%(?!.*\.)/, '%Library.')
 				: tokenValue;
+
+/* 			if ((mapNameToExclusions.get(tokenName) || []).includes(canonicalValue)) {
+				return;
+			}
+ */
+			const exclusions = mapNameToExclusions.get(tokenName) || [];
+			for (let index = 0; index < exclusions.length; index++) {
+				const exclusion = exclusions[index];
+				if (exclusion.endsWith('*')) {
+					if (canonicalValue.startsWith(exclusion.slice(0, -1))) {
+						return;
+					}
+				}
+				else {
+					if (exclusion === canonicalValue) {
+						return;
+					}
+				}
+			}
 			
 			let body = bodyMap[tokenId]?.get(canonicalValue);
 
@@ -343,6 +375,58 @@ export async function activate(context: ExtensionContext): Promise<void> {
 			}
 		};
 	}
+
+	async function addExclusion(thread: CommentThread, global: boolean) {
+			const values = (thread.contextValue || '').split(':');
+			const tokenName = values[1];
+			const canonicalValue = values[2];
+			const doc = workspace.textDocuments.find((document) => thread.uri.toString() === document.uri.toString());
+			if (!tokenName || !canonicalValue || !doc) {
+				return;
+			}
+			const languageId = doc.languageId;
+			const config = workspace.getConfiguration('codeSpex', global ? undefined : doc.uri);
+			const section: any = config.get('languages');
+			const inspected = config.inspect<string[]>(`languages.${languageId}.tokens.${tokenName}.exclusions`);
+			const exclusions = (global ? inspected?.globalValue : inspected?.workspaceFolderValue) || [];
+			if (!exclusions.includes(canonicalValue)) {
+				exclusions.push(canonicalValue);
+				try {			
+					section[languageId].tokens[tokenName].exclusions = exclusions;
+					await config.update('languages', section, global ? true : undefined);
+				} catch (error) {
+					console.log(error);
+				}
+			}
+
+			// Build a map of everything that has comments
+			const toRebuild = new Map<string, null>();
+			mapCommentThreads.forEach((_value, key) => {
+				toRebuild.set(key, null);
+			});
+
+			//Rebuild own comments first
+			addDocumentThreads(doc, true);
+			toRebuild.delete(doc.uri.toString());
+
+			// Next the visibles
+			window.visibleTextEditors.forEach((editor) => {
+				const document = editor.document;
+				if (toRebuild.has(document.uri.toString())) {
+					addDocumentThreads(document, true);
+					toRebuild.delete(document.uri.toString());
+				}
+			});
+
+			// The rest
+			toRebuild.forEach((_value, key) => {
+				const document = workspace.textDocuments.find((document) => key === document.uri.toString());
+				if (document) {
+					addDocumentThreads(document, true);
+				}
+			});
+			return;
+		}
 }
 
 export function deactivate() {}
