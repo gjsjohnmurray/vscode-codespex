@@ -98,23 +98,25 @@
       "comments/commentThread/title": [
         {
           "command": "codeSpex.muteThread",
-          "group": "1@10"
+          "group": "1@10",
+          "when": "commentController == codeSpex"
         },
         {
           "command": "codeSpex.excludeToken",
           "alt": "codeSpex.excludeToken.global",
-          "group": "1@30"
+          "group": "1@30",
+          "when": "commentController == codeSpex"
         },
         {
           "command": "codeSpex.resolveThread",
           "alt": "codeSpex.resolveTokenEverywhere",
           "group": "1@20",
-          "when": "commentThread =~ /^unresolved:/"
+          "when": "commentController == codeSpex && commentThread =~ /^unresolved:/"
         },
         {
           "command": "codeSpex.unresolveThread",
           "group": "1@20",
-          "when": "commentThread =~ /^resolved:/"
+          "when": "commentController == codeSpex && commentThread =~ /^resolved:/"
         }
       ]
     },
