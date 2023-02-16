@@ -347,7 +347,7 @@ export async function activate(context: ExtensionContext): Promise<void> {
 			const comment: Comment = {
 				contextValue: `${tokenName}:${canonicalValue}`,
 				body,
-				author: { name: 'gj :: codeSpex', iconPath },
+				author: { name: 'codeSpex', iconPath },
 				mode: CommentMode.Preview,
 /* 				reactions: [
 					REACTION_MUTE
