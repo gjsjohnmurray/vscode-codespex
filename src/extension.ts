@@ -91,6 +91,40 @@ export async function activate(context: ExtensionContext): Promise<void> {
 			//console.log(`onDidChangeVisibleTextEditors: ${editors.length}`);
 			await addVisibleEditorThreads(editors);
 		}),
+		workspace.onDidChangeConfiguration((event) => {
+			if (event.affectsConfiguration('codeSpex.languages')) {
+
+				// Build a map of everything that has comments
+				const toRebuild = new Map<string, null>();
+				mapCommentThreads.forEach((_value, key) => {
+					toRebuild.set(key, null);
+				});
+
+				// Rebuild active document's comments first
+				const doc = window.activeTextEditor?.document;
+				if (doc) {
+					addDocumentThreads(doc, true);
+					toRebuild.delete(doc.uri.toString());
+				}
+
+				// Next the visible ones
+				window.visibleTextEditors.forEach((editor) => {
+					const document = editor.document;
+					if (toRebuild.has(document.uri.toString())) {
+						addDocumentThreads(document, true);
+						toRebuild.delete(document.uri.toString());
+					}
+				});
+
+				// The rest
+				toRebuild.forEach((_value, key) => {
+					const document = workspace.textDocuments.find((document) => key === document.uri.toString());
+					if (document) {
+						addDocumentThreads(document, true);
+					}
+				});
+			}
+		}),
 		workspace.onDidChangeTextDocument((event) => {
 			// TODO Only set reload timer for document whose languageId we are interested in.
 			// TODO Can we use event.contentChanges to be smarter about updating our comment threads?
@@ -147,10 +181,10 @@ export async function activate(context: ExtensionContext): Promise<void> {
 		}
 	}
 
-	async function addVisibleEditorThreads(editors: readonly TextEditor[]) {
+	async function addVisibleEditorThreads(editors: readonly TextEditor[], reset?: boolean) {
 		await Promise.all(editors.map(async (editor) => {
 			const doc = editor.document;
-			await addDocumentThreads(doc);
+			await addDocumentThreads(doc, reset);
 		}));
 	}
 	
@@ -416,33 +450,6 @@ export async function activate(context: ExtensionContext): Promise<void> {
 					console.log(error);
 				}
 			}
-
-			// Build a map of everything that has comments
-			const toRebuild = new Map<string, null>();
-			mapCommentThreads.forEach((_value, key) => {
-				toRebuild.set(key, null);
-			});
-
-			//Rebuild own comments first
-			addDocumentThreads(doc, true);
-			toRebuild.delete(doc.uri.toString());
-
-			// Next the visibles
-			window.visibleTextEditors.forEach((editor) => {
-				const document = editor.document;
-				if (toRebuild.has(document.uri.toString())) {
-					addDocumentThreads(document, true);
-					toRebuild.delete(document.uri.toString());
-				}
-			});
-
-			// The rest
-			toRebuild.forEach((_value, key) => {
-				const document = workspace.textDocuments.find((document) => key === document.uri.toString());
-				if (document) {
-					addDocumentThreads(document, true);
-				}
-			});
 			return;
 		}
 }
