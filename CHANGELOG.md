@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.1.4] 16-Feb-2023
+- Add button to Comments view titlebar to toggle displaying of comment markers in editors.
+- Reload comments when configuration changes are saved.
+- Shorten author name to save space.
+- Prevent codeSpex command buttons appearing on thread title of comment contributed by another provider.
+
 ## [0.1.3] 10-Feb-2023
 - Implement exclusions.
 - Remove reaction experiment.
