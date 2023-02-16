@@ -62,6 +62,11 @@
         "command": "codeSpex.excludeToken.global",
         "title": "Apply Exclusion to All Workspaces",
         "icon": "$(close-all)"
+      },
+      {
+        "command": "codeSpex.toggleCommenting",
+        "title": "Toggle Editor Commenting",
+        "icon": "$(comment)"
       }
     ],
     "menus": {
@@ -93,6 +98,10 @@
         {
           "command": "codeSpex.excludeToken.global",
           "when": "false"
+        },
+        {
+          "command": "codeSpex.toggleCommenting",
+          "when": "false"
         }
       ],
       "comments/commentThread/title": [
@@ -117,6 +126,13 @@
           "command": "codeSpex.unresolveThread",
           "group": "1@20",
           "when": "commentController == codeSpex && commentThread =~ /^resolved:/"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "codeSpex.toggleCommenting",
+          "group": "navigation",
+          "when": "view == workbench.panel.comments"
         }
       ]
     },

@@ -87,6 +87,9 @@ export async function activate(context: ExtensionContext): Promise<void> {
 			//console.log(`TODO codeSpex.excludeToken.global: ${thread.label} <${thread.contextValue}>`);
 			await addExclusion(thread, true);
 		}),
+		commands.registerCommand('codeSpex.toggleCommenting', () => {
+			commands.executeCommand('workbench.action.toggleCommenting');
+		}),
 		window.onDidChangeVisibleTextEditors(async (editors) => {
 			//console.log(`onDidChangeVisibleTextEditors: ${editors.length}`);
 			await addVisibleEditorThreads(editors);
