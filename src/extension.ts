@@ -374,6 +374,7 @@ export async function activate(context: ExtensionContext): Promise<void> {
 					hovers[0].contents.map((content): string => {
 						return (content as MarkdownString).value;
 					}).join('\n\n'));
+				body.supportHtml = true;
 
 				// Add to cache
 				if (!bodyMap[tokenId]) {
